@@ -3,7 +3,7 @@ const cors = require('cors');
 require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 5000;
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 
 
@@ -30,15 +30,43 @@ async function run() {
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   
-  //popular services apis
-  const popularServicesCollection = client.db('ServiceSharingDB').collection('services');
+
+
+
+
+  const servicesCollection = client.db('ServiceSharingDB').collection('services');
+  const userCollection = client.db('usersDB').collection('users');
+
+     //---------users api--------//
+     app.post('/users', async (req, res) => {
+      const newUser = req.body;
+      const result = await userCollection.insertOne(newUser);
+      res.send(result);
+    })
+
+  //---------------services apis-----------//
 
   app.get('/services', async(req,res)=>{
-    const cursor = popularServicesCollection.find();
+    const cursor = servicesCollection.find();
     const result = await cursor.toArray();
     res.send(result);
+  });
+
+  app.get('/services/popular', async (req, res) => {
+    const result = await servicesCollection.find().limit(6).toArray();
+    res.send(result);
   })
+
   
+  app.post('/services', async(req,res)=>{
+    const body = req.body;
+    const result = await servicesCollection.insertOne(body);
+    res.send(result);
+  });
+
+  
+
+ 
   
   } finally {
     // Ensures that the client will close when you finish/error
