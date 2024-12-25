@@ -16,6 +16,23 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
+const verifyToken = (req, res, next) => {
+  const token = req.cookies?.token;
+
+  if (!token) {
+      return res.status(401).send({ message: 'unauthorized access' });
+  }
+
+  // verify token
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
+      if (err) {
+          return res.status(401).send({ message: 'unauthorized access' });
+      }
+      req.user = decoded;
+      next();
+  })
+}
+
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.0czr5.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0`;
 
@@ -27,22 +44,8 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   }
 });
-const verifyToken = (req, res, next) => {
-  const token = req.cookies?.token;
 
-  if (!token) {
-      return res.status(401).send({ message: 'unauthorized access' });
-  }
 
-  // verify the token
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-      if (err) {
-          return res.status(401).send({ message: 'unauthorized access' });
-      }
-      req.user = decoded;
-      next();
-  })
-}
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
@@ -56,7 +59,6 @@ async function run() {
   const servicesCollection = client.db('ServiceSharingDB').collection('services');
   const userCollection = client.db('ServiceSharingDB').collection('users');
   const bookCollection = client.db('ServiceSharingDB').collection('booking');
-  
 
     //---------Auth api--------//
     app.post('/jwt', (req, res)=>{
@@ -69,6 +71,14 @@ async function run() {
         secure: false
       })
       .send({ success: true})
+    });
+
+    app.post('/signout', (req, res)=>{
+      res.clearCookie('token', {
+        httpOnly: true,
+        secure: false
+      })
+      .send({success: true})
     })
 
 
@@ -77,9 +87,7 @@ async function run() {
       const newUser = req.body;
       const result = await userCollection.insertOne(newUser);
       res.send(result);
-    });
-
-
+    })
 
   //---------------services apis-----------//
 
@@ -94,7 +102,7 @@ async function run() {
     res.send(result);
   })
 
-  app.get('/services/:id', verifyToken, async(req,res)=>{
+  app.get('/services/:id', async(req,res)=>{
     const id = req.params.id;
     const query = { _id: new ObjectId(id) }
     const result = await servicesCollection.findOne(query);
@@ -110,7 +118,7 @@ async function run() {
   });
 
   
-  app.get('/userServices', async (req, res) => {
+  app.get('/userServices', verifyToken, async (req, res) => {
     const email = req.query.email;
     const query = { "serviceProvider.providerEmail" : email };
     const cursor =  servicesCollection.find(query);
@@ -125,6 +133,37 @@ async function run() {
     res.send(result);
   })
 
+  app.put('/services/:id', async (req, res) => {
+    const id = req.params.id;
+    const filter = { _id: new ObjectId(id) }
+    const options = { upsert: true };
+    const updatedData = req.body;
+    const updatedService = {
+      $set: {
+        serviceName: updatedData.serviceName,
+        serviceDescription: updatedData.serviceDescription,
+        servicePrice: updatedData.servicePrice
+      }
+    }
+    const result = await servicesCollection.updateOne(filter, updatedService, options);
+    res.send(result);
+  })
+
+
+   //---------------booked service apis-----------//
+  app.post('bookedService', async (req,res)=>{
+    const body = req.body;
+    const result = await bookCollection.insertOne(body);
+    res.send(result);
+  })  
+
+  app.get('/bookedService', verifyToken, async (req, res) => {
+    const email = req.query.email;
+    const query = {  userEmail  : email };
+    const cursor =  bookCollection.find(query);
+    const result = await cursor.toArray();
+    res.send(result);
+  })
 
   } finally {
     // Ensures that the client will close when you finish/error
