@@ -57,12 +57,40 @@ async function run() {
     res.send(result);
   })
 
+  app.get('/services/:id', async(req,res)=>{
+    const id = req.params.id;
+    const query = { _id: new ObjectId(id) }
+    const result = await servicesCollection.findOne(query);
+
+    // const {serviceProviderEmail} = result;
+    // const userInformation = await userCollection.findOne({email:serviceProviderEmail});
+    // result.providerInformation = userInformation;
+    
+    res.send(result);
+  });
+
   
   app.post('/services', async(req,res)=>{
     const body = req.body;
     const result = await servicesCollection.insertOne(body);
     res.send(result);
   });
+
+  
+  app.get('/service', async (req, res) => {
+    const email = req.query.email;
+    const query = { providerEmail: email };
+    const cursor =  servicesCollection.find(query);
+    const result = await cursor.toArray();
+    res.send(result);
+  })
+
+  app.delete('/services/:id', async (req, res) => {
+    const id = req.params.id;
+    const query = { _id: new ObjectId(id) }
+    const result = await servicesCollection.deleteOne(query);
+    res.send(result);
+  })
 
   
 
