@@ -14,7 +14,7 @@ app.use(cors({
     'http://localhost:5173',
     'https://task-buddy-web-application.web.app',
     'https://task-buddy-web-application.firebaseapp.com'
-    ],
+  ],
   credentials: true
 }));
 app.use(express.json());
@@ -24,16 +24,16 @@ const verifyToken = (req, res, next) => {
   const token = req.cookies?.token;
 
   if (!token) {
-      return res.status(401).send({ message: 'unauthorized access' });
+    return res.status(401).send({ message: 'unauthorized access' });
   }
 
   // verify token
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, (err, decoded) => {
-      if (err) {
-          return res.status(401).send({ message: 'unauthorized access' });
-      }
-      req.user = decoded;
-      next();
+    if (err) {
+      return res.status(401).send({ message: 'unauthorized access' });
+    }
+    req.user = decoded;
+    next();
   })
 }
 
@@ -57,15 +57,15 @@ async function run() {
     // Send a ping to confirm a successful connection
     // await client.db("admin").command({ ping: 1 });
     // console.log("Pinged your deployment. You successfully connected to MongoDB!");
-  
 
 
-  const servicesCollection = client.db('ServiceSharingDB').collection('services');
-  const userCollection = client.db('ServiceSharingDB').collection('users');
-  const bookCollection = client.db('ServiceSharingDB').collection('booking');
+
+    const servicesCollection = client.db('ServiceSharingDB').collection('services');
+    const userCollection = client.db('ServiceSharingDB').collection('users');
+    const bookCollection = client.db('ServiceSharingDB').collection('booking');
 
     //---------Auth api--------//
-    app.post('/jwt', (req, res)=>{
+    app.post('/jwt', (req, res) => {
       const user = req.body;
       const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
         expiresIn: '1d'
@@ -73,103 +73,135 @@ async function run() {
       res.cookie('token', token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === "production" ? "none" :"strict",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
       })
-      .send({ success: true})
+        .send({ success: true })
     });
 
-    app.post('/signout', (req, res)=>{
+    app.post('/signout', (req, res) => {
       res.clearCookie('token', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
-        sameSite: process.env.NODE_ENV === "production" ? "none" :"strict",
+        sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
       })
-      .send({success: true})
+        .send({ success: true })
     })
 
 
-     //---------users api--------//
-     app.post('/users', async (req, res) => {
+    //---------users api--------//
+    app.post('/users', async (req, res) => {
       const newUser = req.body;
       const result = await userCollection.insertOne(newUser);
       res.send(result);
     })
 
-  //---------------services apis-----------//
+    //---------------services apis-----------//
 
-  app.get('/allServices', async(req,res)=>{
-    const cursor = servicesCollection.find();
-    const result = await cursor.toArray();
-    res.send(result);
-  });
+    app.get('/allServices', async (req, res) => {
+      const cursor = servicesCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
 
-  app.get('/services/popular', async (req, res) => {
-    const result = await servicesCollection.find().limit(6).toArray();
-    res.send(result);
-  })
+    app.get('/services/popular', async (req, res) => {
+      const result = await servicesCollection.find().limit(6).toArray();
+      res.send(result);
+    })
 
-  app.get('/services/:id', async(req,res)=>{
-    const id = req.params.id;
-    const query = { _id: new ObjectId(id) }
-    const result = await servicesCollection.findOne(query);
-    
-    res.send(result);
-  });
+    app.get('/services/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await servicesCollection.findOne(query);
 
-  
-  app.post('/services', async(req,res)=>{
-    const body = req.body;
-    const result = await servicesCollection.insertOne(body);
-    res.send(result);
-  });
+      res.send(result);
+    });
 
-  
-  app.get('/userServices', verifyToken, async (req, res) => {
-    const email = req.query.email;
-    const query = { "serviceProvider.providerEmail" : email };
-    const cursor =  servicesCollection.find(query);
-    const result = await cursor.toArray();
-    res.send(result);
-  })
 
-  app.delete('/services/:id', async (req, res) => {
-    const id = req.params.id;
-    const query = { _id: new ObjectId(id) }
-    const result = await servicesCollection.deleteOne(query);
-    res.send(result);
-  })
+    app.post('/services', async (req, res) => {
+      const body = req.body;
+      const result = await servicesCollection.insertOne(body);
+      res.send(result);
+    });
 
-  app.put('/services/:id', async (req, res) => {
-    const id = req.params.id;
-    const filter = { _id: new ObjectId(id) }
-    const options = { upsert: true };
-    const updatedData = req.body;
-    const updatedService = {
-      $set: {
-        serviceName: updatedData.serviceName,
-        serviceDescription: updatedData.serviceDescription,
-        servicePrice: updatedData.servicePrice
+
+    app.get('/userServices', verifyToken, async (req, res) => {
+      const email = req.query.email;
+      const query = { "serviceProvider.providerEmail": email };
+      const cursor = servicesCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+    })
+
+    app.delete('/services/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) }
+      const result = await servicesCollection.deleteOne(query);
+      res.send(result);
+    })
+
+    app.put('/services/:id', async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) }
+      const options = { upsert: true };
+      const updatedData = req.body;
+      const updatedService = {
+        $set: {
+          serviceName: updatedData.serviceName,
+          serviceDescription: updatedData.serviceDescription,
+          servicePrice: updatedData.servicePrice
+        }
       }
-    }
-    const result = await servicesCollection.updateOne(filter, updatedService, options);
-    res.send(result);
-  })
+      const result = await servicesCollection.updateOne(filter, updatedService, options);
+      res.send(result);
+    })
 
 
-   //---------------booked service apis-----------//
-  app.post('/bookedService', async (req,res)=>{
-    const body = req.body;
-    const result = await bookCollection.insertOne(body);
-    res.send(result);
-  })  
+    //---------------book service apis-----------//
+    app.post('/bookService', async (req, res) => {
+      const body = req.body;
+      const result = await bookCollection.insertOne(body);
+      res.send(result);
+    })
 
-  app.get('/bookedService',  async (req, res) => {
-    const email = req.query.email;
-    const query = {  userEmail  : email };
-    const cursor =  bookCollection.find(query);
-    const result = await cursor.toArray();
-    res.send(result);
-  })
+    app.get('/bookService', async (req, res) => {
+      const cursor = bookCollection.find();
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    app.get('/bookService', async (req, res) => {
+      const email = req.query.email;
+      const query = {
+            currentUserEmail: email
+      };
+      const cursor = bookCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+    })
+
+    app.put('/bookService/:id', async(req, res)=>{
+      const id = req.params.id;
+      const body = req.body;
+      const filter = { _id: new ObjectId(id) }
+      const options = { upsert: true };
+      const updatedBooked = {
+        $set:{
+          serviceStatus: body.serviceStatus
+        }
+      }
+      const result = await bookCollection.updateOne(filter, updatedBooked,options);
+      res.send(result);
+    })
+
+    app.get('/myService', async (req, res) => {
+      const email = req.query.email;
+      const query = {
+            providerEmail: email
+      };
+      const cursor = bookCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+    })
 
   } finally {
     // Ensures that the client will close when you finish/error
@@ -182,12 +214,11 @@ run().catch(console.dir);
 
 
 app.get('/', (req, res) => {
-    res.send('Task Buddy server is running')
-  })
-  
-  app.listen(port, () => {
-    console.log(`Task Buddy server is running on port : ${port}`)
-  })
+  res.send('Task Buddy server is running')
+})
+
+app.listen(port, () => {
+  console.log(`Task Buddy server is running on port : ${port}`)
+})
 
 
-  
