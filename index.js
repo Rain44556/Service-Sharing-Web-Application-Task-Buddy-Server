@@ -10,7 +10,11 @@ const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 
 app.use(cors({
-  origin: ['http://localhost:5173'],
+  origin: [
+    'http://localhost:5173',
+    'https://task-buddy-web-application.web.app',
+    'https://task-buddy-web-application.firebaseapp.com'
+    ],
   credentials: true
 }));
 app.use(express.json());
@@ -49,10 +53,10 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log("Pinged your deployment. You successfully connected to MongoDB!");
+    // await client.db("admin").command({ ping: 1 });
+    // console.log("Pinged your deployment. You successfully connected to MongoDB!");
   
 
 
@@ -68,7 +72,8 @@ async function run() {
       });
       res.cookie('token', token, {
         httpOnly: true,
-        secure: false
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === "production" ? "none" :"strict",
       })
       .send({ success: true})
     });
@@ -76,7 +81,8 @@ async function run() {
     app.post('/signout', (req, res)=>{
       res.clearCookie('token', {
         httpOnly: true,
-        secure: false
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === "production" ? "none" :"strict",
       })
       .send({success: true})
     })
@@ -151,13 +157,13 @@ async function run() {
 
 
    //---------------booked service apis-----------//
-  app.post('bookedService', async (req,res)=>{
+  app.post('/bookedService', async (req,res)=>{
     const body = req.body;
     const result = await bookCollection.insertOne(body);
     res.send(result);
   })  
 
-  app.get('/bookedService', verifyToken, async (req, res) => {
+  app.get('/bookedService',  async (req, res) => {
     const email = req.query.email;
     const query = {  userEmail  : email };
     const cursor =  bookCollection.find(query);
